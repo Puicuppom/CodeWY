@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="utf-8">
-  <title>Combine XLS/XLSX (A2:A) → CSV [Code,Lot]</title>
+  <title> รวมไฟล์ Excel </title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --fg:#111; --muted:#666; --bg:#f7f7f8; --card:#fff; --accent:#2563eb; }
@@ -28,7 +28,8 @@
 <div class="wrap">
   <div class="card">
     <h1>รวมไฟล์ Excel: ใช้เฉพาะ A2:A → CSV</h1>
-    <p>เลือกโฟลเดอร์ที่มีไฟล์ <b>.xls</b> หรือ <b>.xlsx</b> ระบบจะอ่านเฉพาะคอลัมน์ A ตั้งแต่แถว 2 ลงไป และสร้างไฟล์ <code>combined.csv</code> ที่มีหัวตาราง <b>Code,Lot</b> — โดย <b>Lot</b> คือชื่อไฟล์</p>
+    <p>เลือกโฟลเดอร์ที่มีไฟล์ <b>.xls</b> หรือ <b>.xlsx</b> ระบบจะอ่านเฉพาะคอลัมน์ A ตั้งแต่แถว 2 ลงไป และสร้างไฟล์ <code>combined.csv</code> ที่มีหัวตาราง <b>Code,Lot</b> — โดย <b>Lot</b> คือชื่อไฟล์<br>
+    <b>พิเศษ:</b> ตัดอักขระพิเศษ <code>'</code> และ <code>"</code> ออก และบังคับให้ <b>Code</b> เป็น “ข้อความ” เพื่อกันเลข 0 นำหน้าหาย</p>
 
     <div class="picker">
       <input id="dir" type="file" webkitdirectory directory multiple accept=".xls,.xlsx" />
@@ -76,7 +77,7 @@ const logEl = document.getElementById('log');
 
 let pickedFiles = [];
 
-/* show messages */
+/* --- logger --- */
 function log(msg, type='info'){
   logEl.hidden = false;
   const prefix = type==='error' ? '[ERR] ' : type==='warn' ? '[WARN] ' : '[INFO] ';
@@ -90,23 +91,44 @@ function basename(name){
   return i>0 ? name.slice(0,i) : name;
 }
 
-/* convert array of rows to CSV (adds BOM for Excel/Thai) */
+/* escape for normal CSV cell */
+function csvEscape(v){
+  if (v == null) return '';
+  const s = String(v).replace(/\r?\n/g, ' ').replace(/"/g,'""');
+  return /[",\n]/.test(s) ? `"${s}"` : s;
+}
+
+/* convert rows → CSV Blob (supports special cell {__asText:true, s:"..."}) */
 function toCSV(rows){
-  const escape = v => {
-    if (v == null) return '';
-    const s = String(v).replace(/\r?\n/g, ' ').replace(/"/g,'""');
-    return /[",\n]/.test(s) ? `"${s}"` : s;
-  };
-  const lines = rows.map(r => r.map(escape).join(','));
-  const csv = '\uFEFF' + lines.join('\r\n');
+  const parts = [];
+  for (const row of rows){
+    const cols = row.map(cell => {
+      // บังคับเป็นข้อความใน Excel โดยใช้ ="..." (กัน 0 หาย)
+      if (cell && typeof cell === 'object' && cell.__asText === true) {
+        // cell.s ควรเป็นสตริงสะอาดแล้ว (ตัด ' และ " ออก)
+        const inner = String(cell.s).replace(/\r?\n/g, ' ');
+        // ไม่ครอบด้วย escape ซ้ำ เพื่อให้สูตรทำงานใน Excel
+        return `="${inner}"`;
+      }
+      return csvEscape(cell);
+    });
+    parts.push(cols.join(','));
+  }
+  const csv = '\uFEFF' + parts.join('\r\n'); // BOM สำหรับภาษาไทย/Excel
   return new Blob([csv], {type: 'text/csv;charset=utf-8;'});
 }
 
-/* update summary line */
+/* update summary */
 function updateSummary(){
   const xl = pickedFiles.filter(f => /\.(xlsx?|XLSX?|Xls|XLS)$/.test(f.name));
   summary.innerHTML = `เลือกไฟล์ทั้งหมด <b>${pickedFiles.length.toLocaleString()}</b> ไฟล์ &nbsp;|&nbsp; พบ Excel <b>${xl.length.toLocaleString()}</b> ไฟล์`;
   runBtn.disabled = !(window.XLSX && xl.length>0);
+}
+
+/* sanitize code: to string, strip ' and ", trim spaces */
+function cleanCode(value){
+  if (value === null || value === undefined) return '';
+  return String(value).replace(/['"]/g, '').trim();
 }
 
 /* read column A from A2:A (first sheet) */
@@ -119,15 +141,12 @@ async function readA2AFromFile(file){
         const wb = XLSX.read(data, {type:'array', cellDates:false});
         if (!wb.SheetNames || wb.SheetNames.length===0){ resolve([]); return; }
         const sheet = wb.Sheets[wb.SheetNames[0]];
-        // raw 2D array
         const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
-        // take col A from row index 1 onward (A2 = row[1][0])
         const out = [];
         for (let r=1; r<rows.length; r++){
-          const code = rows[r] ? rows[r][0] : '';
-          if (code !== '' && code !== null && code !== undefined){
-            out.push(String(code).trim());
-          }
+          const raw = rows[r] ? rows[r][0] : '';
+          const code = cleanCode(raw);
+          if (code !== '') out.push(code);
         }
         resolve(out);
       }catch(e){ reject(e); }
@@ -165,7 +184,8 @@ runBtn.addEventListener('click', async ()=>{
         log(`ไฟล์ ${f.name} ไม่มีข้อมูลในคอลัมน์ A2:A`, 'warn');
         continue;
       }
-      codes.forEach(code => allRows.push([code, lot]));
+      // บังคับให้ Code เป็นข้อความใน Excel: ใช้รูปแบบ ="
+      codes.forEach(code => allRows.push([{__asText:true, s:code}, lot]));
       totalCodes += codes.length;
       okFiles++;
       log(`อ่านสำเร็จ: ${f.name} → ${codes.length} แถว`);
@@ -175,14 +195,13 @@ runBtn.addEventListener('click', async ()=>{
     }
   }
 
-  // no rows?
   if (allRows.length === 1){
     alert('ไม่พบข้อมูล Code ใน A2:A ของทุกไฟล์');
     runBtn.disabled = false;
     return;
   }
 
-  // build and download CSV
+  // build & download CSV
   const blob = toCSV(allRows);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
