@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>Combine XLS/XLSX (A2:A) → CSV [Code,Lot]</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --fg:#111; --muted:#666; --bg:#f7f7f8; --card:#fff; --accent:#2563eb; }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial;}
+    .wrap{max-width:900px;margin:32px auto;padding:0 16px;}
+    .card{background:var(--card);border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.06);padding:20px;}
+    h1{margin:0 0 4px 0;font-size:22px}
+    p{margin:8px 0;color:var(--muted)}
+    .picker{margin:12px 0 20px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    input[type="file"]{padding:10px;border:1px dashed #ccc;border-radius:10px;background:#fafafa}
+    button{border:0;border-radius:12px;padding:12px 16px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+    button:disabled{opacity:.4;cursor:not-allowed}
+    .summary{margin-top:16px;font-size:14px;line-height:1.6}
+    .log{margin-top:12px;background:#0b1020;color:#d5e5ff;padding:12px;border-radius:12px;max-height:280px;overflow:auto;font-size:12px}
+    .badge{display:inline-block;background:#eef2ff;color:#1e40af;padding:2px 8px;border-radius:999px;font-size:12px}
+    .ok{color:#16a34a}
+    .warn{color:#b45309}
+    .err{color:#dc2626}
+    .foot{margin-top:18px;color:#888;font-size:12px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>รวมไฟล์ Excel: ใช้เฉพาะ A2:A → CSV</h1>
+    <p>เลือกโฟลเดอร์ที่มีไฟล์ <b>.xls</b> หรือ <b>.xlsx</b> ระบบจะอ่านเฉพาะคอลัมน์ A ตั้งแต่แถว 2 ลงไป และสร้างไฟล์ <code>combined.csv</code> ที่มีหัวตาราง <b>Code,Lot</b> — โดย <b>Lot</b> คือชื่อไฟล์</p>
+
+    <div class="picker">
+      <input id="dir" type="file" webkitdirectory directory multiple accept=".xls,.xlsx" />
+      <button id="runBtn" disabled>รวมเป็น CSV (Code,Lot)</button>
+      <span id="libStatus" class="badge">กำลังตรวจสอบไลบรารี XLSX…</span>
+    </div>
+
+    <div class="summary" id="summary">
+      ยังไม่ได้เลือกโฟลเดอร์
+    </div>
+    <pre class="log" id="log" hidden></pre>
+    <div class="foot">หากขึ้น “XLSX is not defined” หรือสถานะไลบรารีไม่พร้อม: ต่ออินเทอร์เน็ต หรือวางไฟล์ <code>xlsx.full.min.js</code> ไว้โฟลเดอร์เดียวกับไฟล์ HTML นี้ แล้วเปิดใหม่</div>
+  </div>
+</div>
+
+<script>
+/* ---- XLSX loader: try local file first, then CDN fallback ---- */
+(function loadXLSX(){
+  const statusEl = document.getElementById('libStatus');
+  function set(msg, ok){ statusEl.textContent = msg; statusEl.style.background = ok ? '#dcfce7' : '#fee2e2'; statusEl.style.color = ok ? '#065f46' : '#7f1d1d'; }
+  function enableRunIfReady(){ if (window.XLSX) document.getElementById('runBtn').disabled = false; }
+
+  function inject(src, onload, onerror){
+    const s = document.createElement('script');
+    s.src = src; s.onload = onload; s.onerror = onerror; document.head.appendChild(s);
+  }
+  // 1) try local file (same folder)
+  inject('./xlsx.full.min.js', function(){ set('พบไลบรารี XLSX (โลคอล) ✔', true); enableRunIfReady(); }, function(){
+    // 2) try CDN
+    set('ไม่พบโลคอล → โหลดจาก CDN…', false);
+    inject('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js', function(){
+      set('โหลด XLSX จาก CDN ✔', true); enableRunIfReady();
+    }, function(){
+      set('❌ โหลด XLSX ไม่สำเร็จ', false);
+    });
+  });
+})();
+</script>
+
+<script>
+const dirInput = document.getElementById('dir');
+const runBtn = document.getElementById('runBtn');
+const summary = document.getElementById('summary');
+const logEl = document.getElementById('log');
+
+let pickedFiles = [];
+
+/* show messages */
+function log(msg, type='info'){
+  logEl.hidden = false;
+  const prefix = type==='error' ? '[ERR] ' : type==='warn' ? '[WARN] ' : '[INFO] ';
+  logEl.textContent += prefix + msg + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+/* filename without extension */
+function basename(name){
+  const i = name.lastIndexOf('.');
+  return i>0 ? name.slice(0,i) : name;
+}
+
+/* convert array of rows to CSV (adds BOM for Excel/Thai) */
+function toCSV(rows){
+  const escape = v => {
+    if (v == null) return '';
+    const s = String(v).replace(/\r?\n/g, ' ').replace(/"/g,'""');
+    return /[",\n]/.test(s) ? `"${s}"` : s;
+  };
+  const lines = rows.map(r => r.map(escape).join(','));
+  const csv = '\uFEFF' + lines.join('\r\n');
+  return new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+}
+
+/* update summary line */
+function updateSummary(){
+  const xl = pickedFiles.filter(f => /\.(xlsx?|XLSX?|Xls|XLS)$/.test(f.name));
+  summary.innerHTML = `เลือกไฟล์ทั้งหมด <b>${pickedFiles.length.toLocaleString()}</b> ไฟล์ &nbsp;|&nbsp; พบ Excel <b>${xl.length.toLocaleString()}</b> ไฟล์`;
+  runBtn.disabled = !(window.XLSX && xl.length>0);
+}
+
+/* read column A from A2:A (first sheet) */
+async function readA2AFromFile(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const data = new Uint8Array(reader.result);
+        const wb = XLSX.read(data, {type:'array', cellDates:false});
+        if (!wb.SheetNames || wb.SheetNames.length===0){ resolve([]); return; }
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        // raw 2D array
+        const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
+        // take col A from row index 1 onward (A2 = row[1][0])
+        const out = [];
+        for (let r=1; r<rows.length; r++){
+          const code = rows[r] ? rows[r][0] : '';
+          if (code !== '' && code !== null && code !== undefined){
+            out.push(String(code).trim());
+          }
+        }
+        resolve(out);
+      }catch(e){ reject(e); }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/* handle folder select */
+dirInput.addEventListener('change', (e)=>{
+  pickedFiles = Array.from(e.target.files || []);
+  updateSummary();
+  logEl.textContent = ''; log('เลือกไฟล์แล้ว: ' + pickedFiles.length);
+});
+
+/* main run */
+runBtn.addEventListener('click', async ()=>{
+  if (!window.XLSX){ alert('❌ ยังไม่พบไลบรารี XLSX'); return; }
+  const files = pickedFiles.filter(f => /\.(xlsx?|XLSX?|Xls|XLS)$/.test(f.name));
+  if (files.length===0){ alert('ไม่พบไฟล์ .xls/.xlsx ในโฟลเดอร์'); return; }
+
+  runBtn.disabled = true;
+  logEl.textContent = ''; log('เริ่มประมวลผล…');
+
+  const allRows = [['Code','Lot']]; // CSV header
+  let okFiles = 0, emptyFiles = 0, errorFiles = 0, totalCodes = 0;
+
+  for (const f of files){
+    try{
+      const lot = basename(f.name);
+      const codes = await readA2AFromFile(f);
+      if (codes.length === 0){
+        emptyFiles++;
+        log(`ไฟล์ ${f.name} ไม่มีข้อมูลในคอลัมน์ A2:A`, 'warn');
+        continue;
+      }
+      codes.forEach(code => allRows.push([code, lot]));
+      totalCodes += codes.length;
+      okFiles++;
+      log(`อ่านสำเร็จ: ${f.name} → ${codes.length} แถว`);
+    }catch(err){
+      errorFiles++;
+      log(`อ่านไฟล์ล้มเหลว: ${f.name} → ${err && err.message ? err.message : err}`, 'error');
+    }
+  }
+
+  // no rows?
+  if (allRows.length === 1){
+    alert('ไม่พบข้อมูล Code ใน A2:A ของทุกไฟล์');
+    runBtn.disabled = false;
+    return;
+  }
+
+  // build and download CSV
+  const blob = toCSV(allRows);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'combined.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+
+  // summary
+  const s = `
+    ✅ สำเร็จ: <b class="ok">${okFiles}</b> ไฟล์ &nbsp;
+    ⚠ ว่าง: <b class="warn">${emptyFiles}</b> ไฟล์ &nbsp;
+    ❌ ผิดพลาด: <b class="err">${errorFiles}</b> ไฟล์ &nbsp;|&nbsp;
+    รวมแถว Code: <b>${totalCodes.toLocaleString()}</b> แถว &nbsp;|&nbsp;
+    ไฟล์ CSV: <b>${(allRows.length-1).toLocaleString()}</b> แถว (รวม header)
+  `;
+  summary.innerHTML = s;
+  log('สร้างไฟล์ combined.csv เรียบร้อย');
+
+  runBtn.disabled = false;
+});
+</script>
+</body>
+</html>
