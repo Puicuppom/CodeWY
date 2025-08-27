@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="utf-8">
-  <title>รวมไฟล์ Excel → Code + SaleDB + CodeUse + UseCode_True</title>
+  <title>รวมไฟล์ Excel → Code + SaleDB + CodeUse(asc) + UseCode_True</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --fg:#111; --muted:#666; --bg:#f7f7f8; --card:#fff; --accent:#2563eb; }
@@ -29,11 +29,11 @@
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>รวมไฟล์ Excel → สร้าง Excel: Code + SaleDB + CodeUse + UseCode_True</h1>
+    <h1>รวมไฟล์ Excel → สร้าง Excel: Code + SaleDB + CodeUse(น้อย→มาก) + UseCode_True</h1>
     <p>
       เลือกโฟลเดอร์ที่มีไฟล์ <b>.xls/.xlsx</b> สำหรับ <b>Code</b> (อ่านเฉพาะ A2:A เป็น “Code”, และใช้ชื่อไฟล์เป็น “Lot”) <br>
-      และอัปโหลด <b>ไฟล์ SaleDB</b> 1 ไฟล์ (<b>หัวตาราง A4:O4</b> / <b>ข้อมูล A5:O</b>). จากนั้นกดดาวน์โหลด Excel รวมทุกแท็บ:
-      <b>Code</b>, <b>SaleDB</b>, <b>CodeUse-{ค่าจากคอลัมน์ G}</b>, <b>CodeUse_Index</b>, และ <b>UseCode_True</b> (แถวที่ DBSale.H ตรงกับ Code)
+      และอัปโหลด <b>ไฟล์ SaleDB</b> 1 ไฟล์ (<b>หัว A4:O4</b> / <b>ข้อมูล A5:O</b>). จากนั้นกดดาวน์โหลด Excel รวมทุกแท็บ:
+      <b>Code</b>, <b>SaleDB</b>, <b>CodeUse - {ค่าจากคอลัมน์ G}</b> (เรียงค่า <u>น้อย→มาก</u>), <b>UseCode_True</b> (DBSale.H ตรงกับ Code), และ <b>CodeUse_Index</b> (เรียง <u>น้อย→มาก</u>)
     </p>
 
     <div class="picker">
@@ -52,7 +52,7 @@
 
       <div class="actions">
         <button id="runCsv" class="gray" disabled>ดาวน์โหลด Code เป็น CSV (สำรอง)</button>
-        <button id="runXlsx" disabled>ดาวน์โหลด Excel: Code + SaleDB + CodeUse + UseCode_True</button>
+        <button id="runXlsx" disabled>ดาวน์โหลด Excel: รวมทุกแท็บ</button>
         <span id="libStatus" class="badge">กำลังตรวจสอบไลบรารี XLSX…</span>
       </div>
     </div>
@@ -120,7 +120,7 @@ function sanitizeSheetName(name){
   return n.slice(0,31);
 }
 
-/* CSV helpers (ปุ่มสำรองดาวน์โหลด Code เป็น CSV) */
+/* CSV helpers (สำรอง) — คง 0 นำหน้า โดยทำ ="..." เฉพาะคอลัมน์ Code */
 function csvEscape(v){
   if (v == null) return '';
   const s = String(v).replace(/\r?\n/g, ' ').replace(/"/g,'""');
@@ -128,10 +128,17 @@ function csvEscape(v){
 }
 function toCSV(rows){
   const parts = [];
-  for (const row of rows){
-    const cols = row.map(cell => csvEscape(cell));
+  rows.forEach((row, idx) => {
+    const cols = row.map((cell, cidx) => {
+      // เฉพาะคอลัมน์แรก (Code) และไม่ใช่ header → บังคับ ="..."
+      if (idx>0 && cidx===0) {
+        const inner = String(cell).replace(/\r?\n/g,' ');
+        return `="${inner}"`;
+      }
+      return csvEscape(cell);
+    });
     parts.push(cols.join(','));
-  }
+  });
   const csv = '\uFEFF' + parts.join('\r\n');
   return new Blob([csv], {type: 'text/csv;charset=utf-8;'});
 }
@@ -211,7 +218,7 @@ saleInput.addEventListener('change', (e)=>{
 });
 
 /* ====== Actions ====== */
-/* 1) ปุ่มสำรอง: ดาวน์โหลดเฉพาะ Code เป็น CSV */
+/* 1) ปุ่มสำรอง: ดาวน์โหลดเฉพาะ Code เป็น CSV (คง 0 นำหน้า) */
 runCsvBtn.addEventListener('click', async ()=>{
   if (!window.XLSX){ alert('❌ ยังไม่พบไลบรารี XLSX'); return; }
   const files = pickedFiles.filter(f => /\.(xlsx?|XLSX?|Xls|XLS)$/.test(f.name));
@@ -299,39 +306,39 @@ runXlsxBtn.addEventListener('click', async ()=>{
   }
   log(`(CodeUse) ค่าที่ไม่ว่างในคอลัมน์ G: ${mapUse.size} ค่า`);
 
-  /* --- ประกอบ Workbook --- */
+  /* ===== ประกอบ Workbook (ด้วยการเรียง CodeUse & Index แบบน้อย→มาก) ===== */
   const wb = XLSX.utils.book_new();
+  const sheets = {};
 
-  // 1) Sheet: Code
-  const wsCode = XLSX.utils.aoa_to_sheet(codeRows);
-  XLSX.utils.book_append_sheet(wb, wsCode, 'Code');
+  // 1) Code
+  sheets["Code"] = XLSX.utils.aoa_to_sheet(codeRows);
 
-  // 2) Sheet: SaleDB
+  // 2) SaleDB
   const saleAoA = [];
   if (saleHeader.length>0) saleAoA.push(saleHeader);
   for (const r of saleData) saleAoA.push(r);
-  const wsSale = XLSX.utils.aoa_to_sheet(saleAoA);
-  XLSX.utils.book_append_sheet(wb, wsSale, 'SaleDB');
+  sheets["SaleDB"] = XLSX.utils.aoa_to_sheet(saleAoA);
 
-  // 3) Sheets: CodeUse – {key} + ดัชนี
-  const indexAoA = [['Value(G)', 'Rows']];
-  for (const [key, rows] of mapUse.entries()){
-    indexAoA.push([key, rows.length]);
+  // 3) CodeUse – sort ascending by value in G
+  const entriesSorted = Array.from(mapUse.entries()).sort((a,b) => {
+    const na = Number(a[0]); const nb = Number(b[0]);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;     // number: asc
+    return String(a[0]).localeCompare(String(b[0]));   // string: asc
+  });
+
+  // สร้างชีท CodeUse-* ตามลำดับ asc
+  for (const [key, rows] of entriesSorted){
     const sheetAoA = [];
     if (saleHeader.length>0) sheetAoA.push(saleHeader);
     for (const r of rows) sheetAoA.push(r);
-    const ws = XLSX.utils.aoa_to_sheet(sheetAoA);
-    XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(`CodeUse - ${key}`));
+    sheets[`CodeUse - ${key}`] = XLSX.utils.aoa_to_sheet(sheetAoA);
   }
-  const wsIndex = XLSX.utils.aoa_to_sheet(indexAoA);
-  XLSX.utils.book_append_sheet(wb, wsIndex, 'CodeUse_Index');
 
-  /* --- 4) UseCode_True: match DBSale.H กับ Code.A --- */
-  const codeSet = new Set(codeRows.slice(1).map(r => String(r[0]).trim())); // set ของค่า Code ทั้งหมด
-  const IDX_H = 7; // H column index (0=A)
+  // 4) UseCode_True (DBSale.H match Code.A)
+  const codeSet = new Set(codeRows.slice(1).map(r => String(r[0]).trim()));
+  const IDX_H = 7;
   const useTrueAoA = [];
   if (saleHeader.length>0) useTrueAoA.push(saleHeader);
-
   let matched = 0;
   for (const r of saleData){
     const val = String(r[IDX_H] ?? '').trim();
@@ -342,9 +349,26 @@ runXlsxBtn.addEventListener('click', async ()=>{
   }
   log(`(UseCode_True) พบแถวที่ตรงกับ Code: ${matched}`);
   if (useTrueAoA.length > 1){
-    const wsTrue = XLSX.utils.aoa_to_sheet(useTrueAoA);
-    XLSX.utils.book_append_sheet(wb, wsTrue, 'UseCode_True');
+    sheets["UseCode_True"] = XLSX.utils.aoa_to_sheet(useTrueAoA);
   }
+
+  // 5) CodeUse_Index — ใช้ entriesSorted เดียวกัน (เรียงน้อย→มาก)
+  const indexAoA = [["Value(G)", "Rows"]];
+  for (const [key, rows] of entriesSorted){
+    indexAoA.push([key, rows.length]);
+  }
+  sheets["CodeUse_Index"] = XLSX.utils.aoa_to_sheet(indexAoA);
+
+  /* ==== Append ตามลำดับแท็บที่ต้องการ ==== */
+  XLSX.utils.book_append_sheet(wb, sheets["Code"], "Code");
+  XLSX.utils.book_append_sheet(wb, sheets["SaleDB"], "SaleDB");
+  // ตามด้วย CodeUse-* เรียงน้อย→มาก
+  for (const [key] of entriesSorted){
+    const name = `CodeUse - ${key}`;
+    if (sheets[name]) XLSX.utils.book_append_sheet(wb, sheets[name], sanitizeSheetName(name));
+  }
+  if (sheets["UseCode_True"]) XLSX.utils.book_append_sheet(wb, sheets["UseCode_True"], "UseCode_True");
+  XLSX.utils.book_append_sheet(wb, sheets["CodeUse_Index"], "CodeUse_Index");
 
   /* --- เขียนไฟล์ xlsx --- */
   const outFileName = `Combined_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.xlsx`;
@@ -357,7 +381,7 @@ runXlsxBtn.addEventListener('click', async ()=>{
     ❌ ผิดพลาด: <b class="err">${codeErr}</b> ไฟล์ &nbsp;|&nbsp;
     รวม Code: <b>${totalCodes.toLocaleString()}</b> แถว &nbsp;|&nbsp;
     SaleDB rows: <b>${saleData.length.toLocaleString()}</b> แถว &nbsp;|&nbsp;
-    CodeUse sheets: <b>${mapUse.size}</b> แท็บ &nbsp;|&nbsp;
+    CodeUse tabs: <b>${entriesSorted.length}</b> แท็บ (น้อย→มาก) &nbsp;|&nbsp;
     UseCode_True: <b>${matched}</b> แถว
   `;
   document.getElementById('sumCode').innerHTML = summaryHtml;
