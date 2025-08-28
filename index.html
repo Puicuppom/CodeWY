@@ -1,394 +1,310 @@
 <!doctype html>
 <html lang="th">
 <head>
-  <meta charset="utf-8">
-  <title>รวมไฟล์ Excel → Code + SaleDB + CodeUse(asc) + UseCode_True</title>
+  <meta charset="utf-8" />
+  <title>รวมไฟล์ Excel → Code + SaleDB + แตกจำนวน + Discount + UseCode_True + Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --fg:#111; --muted:#666; --bg:#f7f7f8; --card:#fff; --accent:#2563eb; }
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial;}
-    .wrap{max-width:1000px;margin:32px auto;padding:0 16px;}
-    .card{background:var(--card);border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.06);padding:20px}
-    h1{margin:0 0 4px 0;font-size:22px}
-    p{margin:8px 0;color:var(--muted)}
-    .picker{margin:12px 0 20px 0;display:grid;grid-template-columns:1fr;gap:12px}
-    label{font-size:14px;color:#333;font-weight:600}
-    input[type="file"]{padding:10px;border:1px dashed #ccc;border-radius:10px;background:#fafafa;width:100%}
-    .actions{display:flex;gap:12px;flex-wrap:wrap}
-    button{border:0;border-radius:12px;padding:12px 16px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
-    button.gray{background:#475569}
-    button:disabled{opacity:.4;cursor:not-allowed}
-    .badge{display:inline-block;background:#eef2ff;color:#1e40af;padding:2px 8px;border-radius:999px;font-size:12px}
-    .summary{margin-top:12px;font-size:14px;line-height:1.6}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .log{margin-top:12px;background:#0b1020;color:#d5e5ff;padding:12px;border-radius:12px;max-height:300px;overflow:auto;font-size:12px}
-    .ok{color:#16a34a}.warn{color:#b45309}.err{color:#dc2626}
-    .foot{margin-top:18px;color:#888;font-size:12px}
+    :root{
+      --bg:#0f172a; --bg2:#0b1226; --card:#0f1b39; --muted:#9fb0d8; --fg:#e6eeff; --accent:#60a5fa;
+      --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    .wrap{max-width:1100px;margin:28px auto;padding:0 16px}
+    .hero{
+      background: radial-gradient(1200px 300px at 10% -10%, #1e3a8a55, transparent),
+                  radial-gradient(1200px 300px at 90% -10%, #0ea5e955, transparent);
+      border:1px solid #1e293b; border-radius:18px; padding:22px 20px; box-shadow:0 10px 40px #0006;
+    }
+    h1{margin:0 0 6px 0;font-size:22px;font-weight:800;letter-spacing:.2px}
+    .sub{margin:6px 0 14px 0;color:var(--muted);font-size:14px;line-height:1.6}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .field{background:rgba(255,255,255,.03);border:1px solid #20304d;border-radius:14px;padding:14px}
+    .label{font-size:12px;color:#c7d2fe;margin-bottom:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+    input[type="file"]{width:100%;padding:12px;border:1px dashed #405a8a;border-radius:10px;background:#0a142b;color:#cbd5e1}
+    .actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}
+    .btn{border:0;border-radius:12px;padding:12px 16px;background:linear-gradient(180deg,#60a5fa,#3b82f6);color:#fff;font-weight:800;cursor:pointer;box-shadow:0 8px 24px #0007}
+    .badge{display:inline-flex;align-items:center;gap:8px;background:#122145;border:1px solid #243a6b;color:#c7d2fe;padding:8px 10px;border-radius:999px;font-size:12px}
+    .summary{margin-top:8px;color:#cbd5e1;font-size:13px}
+    .log{margin-top:12px;background:#070d1e;color:#cfe3ff;padding:12px;border-radius:12px;max-height:280px;overflow:auto;font-size:12px;border:1px solid #1a2750}
+    .k{color:#9ca3af}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+    .footer{margin-top:14px;color:#9fb0d8;font-size:12px}
+    .pill{display:inline-block;background:#0b1b37;border:1px solid #1b2f5a;border-radius:999px;padding:2px 8px;color:#9fb0d8}
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <h1>รวมไฟล์ Excel → สร้าง Excel: Code + SaleDB + CodeUse(น้อย→มาก) + UseCode_True</h1>
-    <p>
-      เลือกโฟลเดอร์ที่มีไฟล์ <b>.xls/.xlsx</b> สำหรับ <b>Code</b> (อ่านเฉพาะ A2:A เป็น “Code”, และใช้ชื่อไฟล์เป็น “Lot”) <br>
-      และอัปโหลด <b>ไฟล์ SaleDB</b> 1 ไฟล์ (<b>หัว A4:O4</b> / <b>ข้อมูล A5:O</b>). จากนั้นกดดาวน์โหลด Excel รวมทุกแท็บ:
-      <b>Code</b>, <b>SaleDB</b>, <b>CodeUse - {ค่าจากคอลัมน์ G}</b> (เรียงค่า <u>น้อย→มาก</u>), <b>UseCode_True</b> (DBSale.H ตรงกับ Code), และ <b>CodeUse_Index</b> (เรียง <u>น้อย→มาก</u>)
-    </p>
+  <div class="wrap">
+    <div class="hero">
+      <h1>รวมไฟล์ Excel → Code + SaleDB(แตกจำนวน) + <span class="pill">Discount</span> + <span class="pill">UseCode_True</span> + <span class="pill">Dashboard</span></h1>
+      <div class="sub">
+        แตกจำนวนเมื่อ I&gt;1: <code>base = (J + G) / I</code> • แถวแรก: <code>J = base − G</code> (คง G/H) • แถวถัดไป: <code>J = base</code> และตั้ง <b>G = 0</b>, H ว่าง → จะถูกจัดลงแท็บ <b>Discount - 0</b> อัตโนมัติ<br/>
+        จะข้ามแถวที่มีคำว่า <b>Total:</b> ออกจากผลลัพธ์
+      </div>
 
-    <div class="picker">
       <div class="grid">
-        <div>
-          <label>โฟลเดอร์ Excel โค้ด (อ่าน A2:A → Code, Lot)</label>
+        <div class="field">
+          <div class="label">โฟลเดอร์ Excel โค้ด (อ่าน A2:A → Code, Lot)</div>
           <input id="dir" type="file" webkitdirectory directory multiple accept=".xls,.xlsx" />
           <div id="sumCode" class="summary">ยังไม่ได้เลือกโฟลเดอร์</div>
         </div>
-        <div>
-          <label>ไฟล์ SaleDB (หัว A4:O4 • ข้อมูล A5:O)</label>
+        <div class="field">
+          <div class="label">ไฟล์ SaleDB (หัว A4:O4 • ข้อมูล A5:O)</div>
           <input id="sale" type="file" accept=".xls,.xlsx" />
           <div id="sumSale" class="summary">ยังไม่ได้เลือกไฟล์ SaleDB</div>
         </div>
       </div>
 
       <div class="actions">
-        <button id="runCsv" class="gray" disabled>ดาวน์โหลด Code เป็น CSV (สำรอง)</button>
-        <button id="runXlsx" disabled>ดาวน์โหลด Excel: รวมทุกแท็บ</button>
-        <span id="libStatus" class="badge">กำลังตรวจสอบไลบรารี XLSX…</span>
+        <button id="runXlsx" class="btn">📥 ดาวน์โหลด Excel: รวมทุกแท็บ</button>
+        <span id="libStatus" class="badge">กำลังโหลด XLSX…</span>
       </div>
-    </div>
 
-    <pre class="log" id="log" hidden></pre>
-    <div class="foot">
-      หากขึ้น “XLSX is not defined” หรือสถานะไลบรารีไม่พร้อม: ต่ออินเทอร์เน็ต หรือวางไฟล์ <code>xlsx.full.min.js</code> ไว้โฟลเดอร์เดียวกับไฟล์ HTML นี้ แล้วเปิดใหม่
+      <pre id="log" class="log" hidden></pre>
+      <div class="footer">หากกดแล้วไม่ดาวน์โหลด ให้เปิดด้วย Chrome/Edge และอนุญาตการดาวน์โหลดอัตโนมัติ (Pop-up)</div>
     </div>
   </div>
-</div>
 
-<!-- โหลดไลบรารี SheetJS: โลคอลก่อน / CDN สำรอง -->
-<script>
-(function loadXLSX(){
-  const statusEl = document.getElementById('libStatus');
-  function set(msg, ok){ statusEl.textContent = msg; statusEl.style.background = ok ? '#dcfce7' : '#fee2e2'; statusEl.style.color = ok ? '#065f46' : '#7f1d1d'; }
-  function enableIfReady(){
-    const ready = !!window.XLSX;
-    document.getElementById('runCsv').disabled  = !ready;
-    document.getElementById('runXlsx').disabled = !ready;
+  <!-- โหลด SheetJS: local → CDN -->
+  <script>
+  (function loadXLSX(){
+    const el = document.getElementById('libStatus');
+    function set(msg, ok){ el.textContent = msg; el.style.color = ok ? '#a7f3d0' : '#fecaca'; }
+    function inject(src, onload, onerror){ const s=document.createElement('script'); s.src=src; s.onload=onload; s.onerror=onerror; document.head.appendChild(s); }
+    inject('./xlsx.full.min.js', ()=>set('พบ XLSX (local) ✔', true),
+      ()=>inject('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js',
+        ()=>set('โหลด XLSX จาก CDN ✔', true),
+        ()=>set('❌ โหลด XLSX ไม่สำเร็จ', false)
+      )
+    );
+  })();
+  </script>
+
+  <script>
+  /* ---------- Elements & State ---------- */
+  const dirInput  = document.getElementById('dir');
+  const saleInput = document.getElementById('sale');
+  const runBtn    = document.getElementById('runXlsx');
+  const sumCode   = document.getElementById('sumCode');
+  const sumSale   = document.getElementById('sumSale');
+  const logEl     = document.getElementById('log');
+
+  let pickedFiles = [];
+  let saleFile    = null;
+
+  /* ---------- Helpers ---------- */
+  function log(msg,type='i'){
+    logEl.hidden=false;
+    const pfx = type==='e'?'[ERR] ':type==='w'?'[WARN] ':'[INFO] ';
+    logEl.textContent += pfx + msg + '\n';
+    logEl.scrollTop = logEl.scrollHeight;
   }
-  function inject(src, onload, onerror){
-    const s = document.createElement('script');
-    s.src = src; s.onload = onload; s.onerror = onerror; document.head.appendChild(s);
-  }
-  inject('./xlsx.full.min.js', function(){ set('พบไลบรารี XLSX (โลคอล) ✔', true); enableIfReady(); }, function(){
-    set('ไม่พบโลคอล → โหลดจาก CDN…', false);
-    inject('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js', function(){
-      set('โหลด XLSX จาก CDN ✔', true); enableIfReady();
-    }, function(){ set('❌ โหลด XLSX ไม่สำเร็จ', false); });
-  });
-})();
-</script>
+  function basename(n){ const i=n.lastIndexOf('.'); return i>0?n.slice(0,i):n; }
+  function sheetNameSafe(n){ return (String(n).replace(/[:\\/?*\[\]]/g,' ').trim()||'Sheet').slice(0,31); }
+  function cleanCode(v){ return v==null?'':String(v).replace(/['"]/g,'').trim(); }
+  function toNum(v){ const n = Number(String(v).replace(/,/g,'').trim()); return isNaN(n)?0:n; }
 
-<script>
-/* ====== Utilities / Logger ====== */
-const dirInput  = document.getElementById('dir');
-const saleInput = document.getElementById('sale');
-const runCsvBtn = document.getElementById('runCsv');
-const runXlsxBtn= document.getElementById('runXlsx');
-const sumCode   = document.getElementById('sumCode');
-const sumSale   = document.getElementById('sumSale');
-const logEl     = document.getElementById('log');
-
-let pickedFiles = [];     // โค้ดไฟล์ (จากโฟลเดอร์)
-let saleFile    = null;   // ไฟล์ SaleDB เดี่ยว
-
-function log(msg, type='info'){
-  logEl.hidden = false;
-  const prefix = type==='error' ? '[ERR] ' : type==='warn' ? '[WARN] ' : '[INFO] ';
-  logEl.textContent += prefix + msg + '\n';
-  logEl.scrollTop = logEl.scrollHeight;
-}
-
-function basename(name){
-  const i = name.lastIndexOf('.');
-  return i>0 ? name.slice(0,i) : name;
-}
-
-function sanitizeSheetName(name){
-  // Sheet name <=31 chars, no: : \ / ? * [ ]
-  let n = String(name).replace(/[:\\/?*\[\]]/g, ' ');
-  n = n.trim();
-  if (!n) n = 'Sheet';
-  return n.slice(0,31);
-}
-
-/* CSV helpers (สำรอง) — คง 0 นำหน้า โดยทำ ="..." เฉพาะคอลัมน์ Code */
-function csvEscape(v){
-  if (v == null) return '';
-  const s = String(v).replace(/\r?\n/g, ' ').replace(/"/g,'""');
-  return /[",\n]/.test(s) ? `"${s}"` : s;
-}
-function toCSV(rows){
-  const parts = [];
-  rows.forEach((row, idx) => {
-    const cols = row.map((cell, cidx) => {
-      // เฉพาะคอลัมน์แรก (Code) และไม่ใช่ header → บังคับ ="..."
-      if (idx>0 && cidx===0) {
-        const inner = String(cell).replace(/\r?\n/g,' ');
-        return `="${inner}"`;
-      }
-      return csvEscape(cell);
+  async function readFirstSheet(file){
+    return new Promise((resolve,reject)=>{
+      const fr=new FileReader();
+      fr.onload=()=>{
+        try{
+          const data = new Uint8Array(fr.result);
+          const wb   = XLSX.read(data,{type:'array',cellDates:false});
+          if(!wb.SheetNames.length){ resolve({sheet:null}); return; }
+          resolve({sheet: wb.Sheets[wb.SheetNames[0]]});
+        }catch(e){ reject(e); }
+      };
+      fr.onerror=()=>reject(fr.error);
+      fr.readAsArrayBuffer(file);
     });
-    parts.push(cols.join(','));
+  }
+
+  async function readCodesFromFile(file){
+    const {sheet}=await readFirstSheet(file);
+    if(!sheet) return [];
+    const rows = XLSX.utils.sheet_to_json(sheet,{header:1,raw:true,defval:''});
+    const out=[];
+    for(let r=1;r<rows.length;r++){
+      const val = rows[r]?.[0] ?? '';
+      const code = cleanCode(val);
+      if(code) out.push(code);
+    }
+    return out;
+  }
+
+  async function readSaleDB(file){
+    const {sheet}=await readFirstSheet(file);
+    if(!sheet) return {header:[], rows:[]};
+    const rows   = XLSX.utils.sheet_to_json(sheet,{header:1,raw:true,defval:''});
+    const header = (rows[3]||[]).slice(0,15);        // A..O
+    const data   = [];
+    for(let r=4;r<rows.length;r++){
+      const row = (rows[r]||[]).slice(0,15);
+      // ข้ามแถวรวม/ Total:
+      if(row.join('').toLowerCase().includes('total:')) continue;
+      if(row.some(v=>String(v).trim()!=='')) data.push(row);
+    }
+    return {header, rows:data};
+  }
+
+  /* --- แตกจำนวน: base=(J+G)/I | แถวแรก J=base-G (คง G/H), แถวอื่น J=base และ G=0/H='' --- */
+  function expandSaleRows(rows){
+    const IDX_G=6, IDX_H=7, IDX_I=8, IDX_J=9;
+    const out=[];
+    let expanded=0, added=0;
+
+    for(const row of rows){
+      const qty = Math.max(1, Math.floor(toNum(row[IDX_I])) || 1);
+      const g   = toNum(row[IDX_G]);
+      const j   = toNum(row[IDX_J]);
+
+      if(qty===1){
+        const r = row.slice();
+        r[IDX_I]=1;
+        out.push(r);
+        continue;
+      }
+
+      const base = (j + g) / qty;
+      for(let k=0;k<qty;k++){
+        const r = row.slice();
+        r[IDX_I] = 1;
+        if(k===0){
+          r[IDX_J] = base - g; // keep G/H
+        }else{
+          r[IDX_J] = base;
+          r[IDX_G] = 0;        // ส่งไปกลุ่ม Discount - 0
+          r[IDX_H] = '';       // ไม่เทียบ Code
+        }
+        out.push(r);
+      }
+      expanded++; added += (qty-1);
+    }
+    log(`(แตกจำนวน) ชุดที่แตก: ${expanded} | เพิ่มแถว: ${added}`);
+    return out;
+  }
+
+  /* ---------- UI events ---------- */
+  dirInput.addEventListener('change', e=>{
+    pickedFiles = Array.from(e.target.files||[]);
+    const xls   = pickedFiles.filter(f=>/\.(xlsx?|XLSX?|Xls|XLS)$/.test(f.name)).length;
+    sumCode.innerHTML = `เลือกทั้งหมด <b>${pickedFiles.length.toLocaleString()}</b> ไฟล์ • Excel <b>${xls}</b> ไฟล์`;
+    log(`เลือกโฟลเดอร์ Code: ${pickedFiles.length} ไฟล์`);
   });
-  const csv = '\uFEFF' + parts.join('\r\n');
-  return new Blob([csv], {type: 'text/csv;charset=utf-8;'});
-}
 
-/* Clean code: strip ' and " , trim spaces */
-function cleanCode(value){
-  if (value === null || value === undefined) return '';
-  return String(value).replace(/['"]/g, '').trim();
-}
+  saleInput.addEventListener('change', e=>{
+    saleFile = e.target.files?.[0]||null;
+    sumSale.innerHTML = saleFile ? `<b>${saleFile.name}</b>` : 'ยังไม่ได้เลือกไฟล์ SaleDB';
+    log(`เลือก SaleDB: ${saleFile?saleFile.name:'—'}`);
+  });
 
-/* ====== Readers using SheetJS ====== */
-async function readFirstSheet(file){
-  return new Promise((resolve, reject)=>{
-    const fr = new FileReader();
-    fr.onload = () => {
+  /* ---------- Main: build & download ---------- */
+  runBtn.addEventListener('click', async ()=>{
+    if(!window.XLSX){ alert('ยังไม่พบไลบรารี XLSX'); return; }
+    const codeFiles = pickedFiles.filter(f=>/\.(xlsx?|XLSX?|Xls|XLS)$/.test(f.name));
+    if(!codeFiles.length){ alert('เลือกโฟลเดอร์ไฟล์โค้ดก่อน'); return; }
+    if(!saleFile){ alert('เลือกไฟล์ SaleDB ก่อน'); return; }
+
+    logEl.hidden=false; logEl.textContent='';
+    log('เริ่มประมวลผล…');
+
+    /* 1) รวม Code */
+    const codeAoA = [['Code','Lot']];
+    for(const f of codeFiles){
       try{
-        const data = new Uint8Array(fr.result);
-        const wb = XLSX.read(data, {type:'array', cellDates:false});
-        if (!wb.SheetNames || wb.SheetNames.length===0){ resolve({wb:null, sheet:null, name:null}); return; }
-        const sheetName = wb.SheetNames[0];
-        resolve({wb, sheet: wb.Sheets[sheetName], name: sheetName});
-      }catch(e){ reject(e); }
-    };
-    fr.onerror = () => reject(fr.error);
-    fr.readAsArrayBuffer(file);
-  });
-}
+        const lot   = basename(f.name);
+        const codes = await readCodesFromFile(f);
+        codes.forEach(c => codeAoA.push([c,lot]));
+        log(`(Code) ${f.name} → ${codes.length} แถว`);
+      }catch(e){ log(`อ่านโค้ดล้มเหลว: ${f.name} → ${e.message||e}`,'e'); }
+    }
+    if(codeAoA.length===1){ alert('ไม่พบข้อมูล Code ใน A2:A ของทุกไฟล์'); return; }
 
-/* อ่าน A2:A จากไฟล์โค้ด (แท็บแรก) → array of code strings */
-async function readCodesFromFile(file){
-  const {sheet} = await readFirstSheet(file);
-  if (!sheet) return [];
-  const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
-  const out = [];
-  for (let r=1; r<rows.length; r++){
-    const raw = rows[r] ? rows[r][0] : '';
-    const code = cleanCode(raw);
-    if (code !== '') out.push(code);
-  }
-  return out;
-}
-
-/* อ่าน SaleDB: หัว A4:O4 (index 3) • ข้อมูล A5:O (เริ่ม index 4) */
-async function readSaleDB(file){
-  const {sheet} = await readFirstSheet(file);
-  if (!sheet) return {header:[], rows:[]};
-  const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
-  const header = (rows[3] || []).slice(0, 15); // A..O = 15 คอลัมน์
-  const data = [];
-  for (let r=4; r<rows.length; r++){ // เริ่มข้อมูลจริงที่แถว 5
-    const row = (rows[r] || []).slice(0, 15);
-    if (row.some(v => String(v).trim()!=='')) data.push(row);
-  }
-  return {header, rows: data};
-}
-
-/* ====== UI events ====== */
-function updateCodeSummary(){
-  const xl = pickedFiles.filter(f => /\.(xlsx?|XLSX?|Xls|XLS)$/.test(f.name));
-  sumCode.innerHTML = `เลือกทั้งหมด <b>${pickedFiles.length.toLocaleString()}</b> ไฟล์ &nbsp;|&nbsp; พบ Excel <b>${xl.length.toLocaleString()}</b> ไฟล์`;
-  runCsvBtn.disabled  = !window.XLSX || xl.length===0;
-  runXlsxBtn.disabled = !window.XLSX; // ให้กดได้เมื่อมีไลบรารี พร้อมตรวจอีกทีตอนกด
-}
-function updateSaleSummary(){
-  sumSale.innerHTML = saleFile ? `<b>${saleFile.name}</b>` : 'ยังไม่ได้เลือกไฟล์ SaleDB';
-}
-
-dirInput.addEventListener('change', (e)=>{
-  pickedFiles = Array.from(e.target.files || []);
-  logEl.textContent = ''; log(`เลือกไฟล์โค้ดแล้ว: ${pickedFiles.length}`);
-  updateCodeSummary();
-});
-saleInput.addEventListener('change', (e)=>{
-  saleFile = (e.target.files && e.target.files[0]) || null;
-  log(`เลือก SaleDB: ${saleFile ? saleFile.name : '—'}`);
-  updateSaleSummary();
-});
-
-/* ====== Actions ====== */
-/* 1) ปุ่มสำรอง: ดาวน์โหลดเฉพาะ Code เป็น CSV (คง 0 นำหน้า) */
-runCsvBtn.addEventListener('click', async ()=>{
-  if (!window.XLSX){ alert('❌ ยังไม่พบไลบรารี XLSX'); return; }
-  const files = pickedFiles.filter(f => /\.(xlsx?|XLSX?|Xls|XLS)$/.test(f.name));
-  if (files.length===0){ alert('กรุณาเลือกโฟลเดอร์ที่มีไฟล์ .xls/.xlsx สำหรับ Code'); return; }
-
-  runCsvBtn.disabled = true;
-  logEl.textContent = ''; log('เริ่มประมวลผล Code → CSV…');
-
-  const allRows = [['Code','Lot']];
-  let ok=0, empty=0, err=0, total=0;
-
-  for (const f of files){
+    /* 2) SaleDB + แตกจำนวน */
+    let saleHeader=[], saleRows=[];
     try{
-      const lot = basename(f.name);
-      const codes = await readCodesFromFile(f);
-      if (codes.length===0){ empty++; log(`ไฟล์ ${f.name} ไม่มีข้อมูล A2:A`, 'warn'); continue; }
-      codes.forEach(c => allRows.push([c, lot]));
-      ok++; total += codes.length; log(`อ่านสำเร็จ: ${f.name} → ${codes.length} แถว`);
-    }catch(e){
-      err++; log(`อ่านไฟล์ล้มเหลว: ${f.name} → ${e && e.message ? e.message : e}`, 'error');
+      const {header, rows} = await readSaleDB(saleFile);
+      saleHeader = header;
+      saleRows   = expandSaleRows(rows);
+      log(`(SaleDB) หลังแตกจำนวน: ${saleRows.length} แถว`);
+    }catch(e){ log(`อ่าน SaleDB ล้มเหลว: ${e.message||e}`,'e'); alert('อ่าน SaleDB ไม่สำเร็จ'); return; }
+
+    /* 3) แยกกลุ่ม → Discount / UseCode_True (ตาม G) */
+    const IDX_G=6, IDX_H=7;
+    const codeSet = new Set(codeAoA.slice(1).map(r=>String(r[0]).trim()));
+
+    const mapDiscount = new Map(); // H not-in Code
+    const mapTrue     = new Map(); // H in Code
+    for(const row of saleRows){
+      const g = String(row[IDX_G]??'').trim();
+      const h = String(row[IDX_H]??'').trim();
+      if(!g && g!=='0') continue;   // ต้องมี G (รวม 0)
+      const inCode = (h && codeSet.has(h));
+      const bucket = inCode ? mapTrue : mapDiscount;
+      if(!bucket.has(g)) bucket.set(g, []);
+      bucket.get(g).push(row);
     }
-  }
 
-  if (allRows.length===1){ alert('ไม่พบข้อมูล Code ใน A2:A ของทุกไฟล์'); runCsvBtn.disabled=false; return; }
+    const sortAsc=(a,b)=>{ const na=Number(a), nb=Number(b); if(!isNaN(na)&&!isNaN(nb)) return na-nb; return String(a).localeCompare(String(b)); };
+    const discEntries = Array.from(mapDiscount.entries()).sort((a,b)=>sortAsc(a[0],b[0]));
+    const trueEntries = Array.from(mapTrue.entries()).sort((a,b)=>sortAsc(a[0],b[0]));
 
-  const blob = toCSV(allRows);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='Code.csv'; document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
+    /* 4) สร้าง Workbook */
+    const wb = XLSX.utils.book_new();
 
-  log(`สร้าง Code.csv เรียบร้อย (รวม ${total.toLocaleString()} แถว)`);
+    // Code
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(codeAoA), 'Code');
 
-  runCsvBtn.disabled = false;
-});
+    // SaleDB (หลังแตก)
+    const saleAoA = saleHeader.length ? [saleHeader, ...saleRows] : [...saleRows];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(saleAoA), 'SaleDB');
 
-/* 2) ปุ่มหลัก: ดาวน์โหลด Excel รวมทุกแท็บ */
-runXlsxBtn.addEventListener('click', async ()=>{
-  if (!window.XLSX){ alert('❌ ยังไม่พบไลบรารี XLSX'); return; }
+    // Discount - {G} (H not-in Code)
+    for(const [g, rows] of discEntries){
+      const aoa = saleHeader.length ? [saleHeader, ...rows] : [...rows];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), sheetNameSafe(`Discount - ${g}`));
+    }
 
-  const codeFiles = pickedFiles.filter(f => /\.(xlsx?|XLSX?|Xls|XLS)$/.test(f.name));
-  if (codeFiles.length===0){ alert('กรุณาเลือกโฟลเดอร์ไฟล์โค้ด .xls/.xlsx (สำหรับแท็บ Code)'); return; }
-  if (!saleFile){ alert('กรุณาเลือกไฟล์ SaleDB (.xls/.xlsx)'); return; }
+    // UseCode_True - {G} (H in Code)
+    for(const [g, rows] of trueEntries){
+      const aoa = saleHeader.length ? [saleHeader, ...rows] : [...rows];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), sheetNameSafe(`UseCode_True - ${g}`));
+    }
 
-  runXlsxBtn.disabled = true;
-  logEl.textContent = '';
-  log('เริ่มประมวลผลเพื่อสร้าง Excel รวม…');
+    // Dashboard: รวมจำนวนทุกแท็บย่อย
+    const dash = [["Type","G","Rows"]];
+    for(const [g, rows] of discEntries) dash.push(["Discount", g, rows.length]);
+    for(const [g, rows] of trueEntries) dash.push(["UseCode_True", g, rows.length]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dash), 'Dashboard');
 
-  /* --- รวบรวม Code --- */
-  const codeRows = [['Code','Lot']];
-  let codeOk=0, codeEmpty=0, codeErr=0, totalCodes=0;
-  for (const f of codeFiles){
+    /* 5) เขียนไฟล์ (พร้อม fallback) */
+    const outName = `Combined_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.xlsx`;
     try{
-      const lot = basename(f.name);
-      const codes = await readCodesFromFile(f);
-      if (codes.length===0){ codeEmpty++; log(`(Code) ${f.name}: ไม่มี A2:A`, 'warn'); continue; }
-      codes.forEach(c => codeRows.push([c, lot]));
-      codeOk++; totalCodes += codes.length;
-      log(`(Code) อ่านสำเร็จ: ${f.name} → ${codes.length} แถว`);
+      XLSX.writeFile(wb, outName);
     }catch(e){
-      codeErr++; log(`(Code) อ่านล้มเหลว: ${f.name} → ${e && e.message ? e.message : e}`, 'error');
+      log(`writeFile ล้มเหลว → fallback blob`, 'w');
+      try{
+        const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+        const blob  = new Blob([wbout], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+        const url   = URL.createObjectURL(blob);
+        const a     = document.createElement('a');
+        a.href = url; a.download = outName; document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      }catch(ee){
+        log(`fallback blob ล้มเหลว: ${ee.message||ee}`, 'e');
+        alert('ไม่สามารถสร้างไฟล์ดาวน์โหลดได้');
+        return;
+      }
     }
-  }
-  if (codeRows.length===1){ alert('ไม่พบข้อมูล Code ใน A2:A ของทุกไฟล์'); runXlsxBtn.disabled=false; return; }
 
-  /* --- อ่าน SaleDB A4:O4 (หัว) และ A5:O (ข้อมูล) --- */
-  let saleHeader=[], saleData=[];
-  try{
-    const {header, rows} = await readSaleDB(saleFile);
-    saleHeader = header; saleData = rows;
-    if (saleHeader.length===0){ log('⚠ SaleDB: ไม่พบ header ที่แถว 4 (A4:O4)', 'warn'); }
-    log(`(SaleDB) อ่านสำเร็จ: header ${saleHeader.length} คอลัมน์, ข้อมูล ${saleData.length} แถว`);
-  }catch(e){
-    log(`(SaleDB) อ่านล้มเหลว: ${e && e.message ? e.message : e}`, 'error');
-    alert('อ่าน SaleDB ไม่สำเร็จ'); runXlsxBtn.disabled=false; return;
-  }
-
-  /* --- สร้าง CodeUse แยกตามคอลัมน์ G --- */
-  const IDX_G = 6; // A=0..O=14
-  const mapUse = new Map();
-  for (const row of saleData){
-    const key = String(row[IDX_G] ?? '').trim();
-    if (!key) continue;
-    if (!mapUse.has(key)) mapUse.set(key, []);
-    mapUse.get(key).push(row);
-  }
-  log(`(CodeUse) ค่าที่ไม่ว่างในคอลัมน์ G: ${mapUse.size} ค่า`);
-
-  /* ===== ประกอบ Workbook (ด้วยการเรียง CodeUse & Index แบบน้อย→มาก) ===== */
-  const wb = XLSX.utils.book_new();
-  const sheets = {};
-
-  // 1) Code
-  sheets["Code"] = XLSX.utils.aoa_to_sheet(codeRows);
-
-  // 2) SaleDB
-  const saleAoA = [];
-  if (saleHeader.length>0) saleAoA.push(saleHeader);
-  for (const r of saleData) saleAoA.push(r);
-  sheets["SaleDB"] = XLSX.utils.aoa_to_sheet(saleAoA);
-
-  // 3) CodeUse – sort ascending by value in G
-  const entriesSorted = Array.from(mapUse.entries()).sort((a,b) => {
-    const na = Number(a[0]); const nb = Number(b[0]);
-    if (!isNaN(na) && !isNaN(nb)) return na - nb;     // number: asc
-    return String(a[0]).localeCompare(String(b[0]));   // string: asc
+    // สรุปบนหน้า
+    const discTotal = discEntries.reduce((s,[,rows])=>s+rows.length,0);
+    const trueTotal = trueEntries.reduce((s,[,rows])=>s+rows.length,0);
+    sumCode.innerHTML = `Code รวม <b>${(codeAoA.length-1).toLocaleString()}</b> แถว • Discount <b>${discTotal.toLocaleString()}</b> • UseCode_True <b>${trueTotal.toLocaleString()}</b>`;
+    log(`✅ สร้างไฟล์เรียบร้อย: ${outName}`);
   });
-
-  // สร้างชีท CodeUse-* ตามลำดับ asc
-  for (const [key, rows] of entriesSorted){
-    const sheetAoA = [];
-    if (saleHeader.length>0) sheetAoA.push(saleHeader);
-    for (const r of rows) sheetAoA.push(r);
-    sheets[`CodeUse - ${key}`] = XLSX.utils.aoa_to_sheet(sheetAoA);
-  }
-
-  // 4) UseCode_True (DBSale.H match Code.A)
-  const codeSet = new Set(codeRows.slice(1).map(r => String(r[0]).trim()));
-  const IDX_H = 7;
-  const useTrueAoA = [];
-  if (saleHeader.length>0) useTrueAoA.push(saleHeader);
-  let matched = 0;
-  for (const r of saleData){
-    const val = String(r[IDX_H] ?? '').trim();
-    if (val && codeSet.has(val)){
-      useTrueAoA.push(r);
-      matched++;
-    }
-  }
-  log(`(UseCode_True) พบแถวที่ตรงกับ Code: ${matched}`);
-  if (useTrueAoA.length > 1){
-    sheets["UseCode_True"] = XLSX.utils.aoa_to_sheet(useTrueAoA);
-  }
-
-  // 5) CodeUse_Index — ใช้ entriesSorted เดียวกัน (เรียงน้อย→มาก)
-  const indexAoA = [["Value(G)", "Rows"]];
-  for (const [key, rows] of entriesSorted){
-    indexAoA.push([key, rows.length]);
-  }
-  sheets["CodeUse_Index"] = XLSX.utils.aoa_to_sheet(indexAoA);
-
-  /* ==== Append ตามลำดับแท็บที่ต้องการ ==== */
-  XLSX.utils.book_append_sheet(wb, sheets["Code"], "Code");
-  XLSX.utils.book_append_sheet(wb, sheets["SaleDB"], "SaleDB");
-  // ตามด้วย CodeUse-* เรียงน้อย→มาก
-  for (const [key] of entriesSorted){
-    const name = `CodeUse - ${key}`;
-    if (sheets[name]) XLSX.utils.book_append_sheet(wb, sheets[name], sanitizeSheetName(name));
-  }
-  if (sheets["UseCode_True"]) XLSX.utils.book_append_sheet(wb, sheets["UseCode_True"], "UseCode_True");
-  XLSX.utils.book_append_sheet(wb, sheets["CodeUse_Index"], "CodeUse_Index");
-
-  /* --- เขียนไฟล์ xlsx --- */
-  const outFileName = `Combined_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.xlsx`;
-  XLSX.writeFile(wb, outFileName);
-
-  /* --- สรุปผล --- */
-  const summaryHtml = `
-    ✅ Code สำเร็จ: <b class="ok">${codeOk}</b> ไฟล์ &nbsp;
-    ⚠ ว่าง: <b class="warn">${codeEmpty}</b> ไฟล์ &nbsp;
-    ❌ ผิดพลาด: <b class="err">${codeErr}</b> ไฟล์ &nbsp;|&nbsp;
-    รวม Code: <b>${totalCodes.toLocaleString()}</b> แถว &nbsp;|&nbsp;
-    SaleDB rows: <b>${saleData.length.toLocaleString()}</b> แถว &nbsp;|&nbsp;
-    CodeUse tabs: <b>${entriesSorted.length}</b> แท็บ (น้อย→มาก) &nbsp;|&nbsp;
-    UseCode_True: <b>${matched}</b> แถว
-  `;
-  document.getElementById('sumCode').innerHTML = summaryHtml;
-  log('สร้าง Excel เรียบร้อย: ' + outFileName);
-
-  runXlsxBtn.disabled = false;
-});
-</script>
+  </script>
 </body>
 </html>
